@@ -1,0 +1,245 @@
+#融合模块在utils中?
+
+import os
+from os import listdir, mkdir, sep
+from os.path import join, exists, splitext
+import random
+import numpy as np
+import torch
+from PIL import Image
+from torch.autograd import Variable
+from args_fusion import args
+#from scipy.misc import imread, imsave, imresize
+import matplotlib as mpl
+import cv2
+import torch.nn.functional as F
+from torchvision import datasets, transforms
+from guided_filter import GuidedFilter
+#融合层策略?
+import fusion_strategy
+
+def list_images(directory):
+    images = []
+    names = []
+    dir = listdir(directory)   #通过绝对路径加载图片
+    dir.sort()
+    for file in dir:
+        name = file.lower()
+        if name.endswith('.png'):
+            images.append(join(directory, file))
+        elif name.endswith('.jpg'):
+            images.append(join(directory, file))
+        elif name.endswith('.jpeg'):
+            images.append(join(directory, file))
+        name1 = name.split('.')
+        names.append(name1[0])
+    return images
+
+
+def tensor_load_rgbimage(filename, size=None, scale=None, keep_asp=False):
+    img = Image.open(filename).convert('RGB')
+    if size is not None:
+        if keep_asp:
+            size2 = int(size * 1.0 / img.size[0] * img.size[1])
+            img = img.resize((size, size2), Image.ANTIALIAS)
+        else:
+            img = img.resize((size, size), Image.ANTIALIAS)
+
+    elif scale is not None:
+        img = img.resize((int(img.size[0] / scale), int(img.size[1] / scale)), Image.ANTIALIAS)
+    img = np.array(img).transpose(2, 0, 1)
+    img = torch.from_numpy(img).float()
+    return img
+
+
+def tensor_save_rgbimage(tensor, filename, cuda=True):
+    if cuda:
+        # img = tensor.clone().cpu().clamp(0, 255).numpy()
+        img = tensor.cpu().clamp(0, 255).data[0].numpy()
+    else:
+        # img = tensor.clone().clamp(0, 255).numpy()
+        img = tensor.clamp(0, 255).numpy()
+    img = img.transpose(1, 2, 0).astype('uint8')
+    img = Image.fromarray(img)
+    img.save(filename)
+
+
+def tensor_save_bgrimage(tensor, filename, cuda=False):
+    (b, g, r) = torch.chunk(tensor, 3)
+    tensor = torch.cat((r, g, b))
+    tensor_save_rgbimage(tensor, filename, cuda)
+
+
+def gram_matrix(y):
+    (b, ch, h, w) = y.size()
+    features = y.view(b, ch, w * h)
+    features_t = features.transpose(1, 2)
+    gram = features.bmm(features_t) / (ch * h * w)
+    return gram
+
+
+def matSqrt(x):
+    U,D,V = torch.svd(x)
+    return U * (D.pow(0.5).diag()) * V.t()
+
+
+# load training images
+def load_dataset(image_path, BATCH_SIZE, num_imgs=None):
+    if num_imgs is None:
+        num_imgs = len(image_path)
+    original_imgs_path = image_path[:num_imgs]
+    # random
+    random.shuffle(original_imgs_path)
+    mod = num_imgs % BATCH_SIZE
+    print('BATCH SIZE %d.' % BATCH_SIZE)
+    # 总共8604张图片
+    print('Train images number %d.' % num_imgs)
+    print('Train images samples %s.' % str(num_imgs / BATCH_SIZE))
+
+    if mod > 0:
+        print('Train set has been trimmed %d samples...\n' % mod)
+        original_imgs_path = original_imgs_path[:-mod]
+    batches = int(len(original_imgs_path) // BATCH_SIZE)
+    return original_imgs_path, batches
+
+
+
+# Image.convert()是图像实例对象的一个方法，接受一个 mode 参数，用以指定一种色彩模式，用法：
+# L: 8位像素，黑白
+# RGB: 3x8位像素，真彩色
+# YCbCr: 3x8位像素，彩色视频格式
+
+
+def get_image(path, height=256, width=256, mode='L'):
+    if mode == 'L':
+        image = Image.open(path).convert('L')
+    elif mode == 'RGB':
+        image = Image.open(path).convert('RGB')
+    elif mode == 'YCbCr':
+        img = Image.open(path).convert('YCbCr')
+        image, _, _ = img.split()
+
+
+    if height is not None and width is not None:
+        image = image.resize((width, height), resample=Image.NEAREST)
+    image = np.array(image)
+
+    return image
+
+def load_img(filepath):
+    img = Image.open(filepath).convert('YCbCr')
+    y, _, _ = img.split()
+    return y
+
+def get_train_images_auto(paths, height=256, width=256, mode='RGB'):
+    if isinstance(paths, str):
+        paths = [paths]
+    images = []
+    for path in paths:
+        image = get_image(path, height, width, mode=mode)
+        if mode == 'L':
+            image = np.reshape(image, [1, image.shape[0], image.shape[1]])
+        else:
+            image = np.reshape(image, [image.shape[2], image.shape[0], image.shape[1]])
+        images.append(image)
+
+    images = np.stack(images, axis=0)
+    images = torch.from_numpy(images).float()
+    return images
+    
+def get_train_images(paths, height=256, width=256, flag=False):
+    if isinstance(paths, str):
+        paths = [paths]
+    images = []
+    for path in paths:
+        image = get_image(path, height, width, flag)
+        if flag is True:
+            image = np.transpose(image, (2, 0, 1))
+        else:
+            image = np.reshape(image, [1, height, width])
+        images.append(image)
+
+    images = np.stack(images, axis=0)
+    images = torch.from_numpy(images).float()
+    return images
+
+
+def get_test_images(paths, height=None, width=None, mode='RGB'):
+    ImageToTensor = transforms.Compose([transforms.ToTensor()])
+    if isinstance(paths, str):
+        paths = [paths]
+    images = []
+    for path in paths:
+        image = get_image(path, height, width, mode=mode)
+        if mode == 'L' :#or mode == 'YCbCr':
+            image = np.reshape(image, [1, image.shape[0], image.shape[1]])
+        else:
+            # test = ImageToTensor(image).numpy()
+            # shape = ImageToTensor(image).size()
+            image = ImageToTensor(image).float().numpy()*255
+    images.append(image)
+    images = np.stack(images, axis=0)
+    images = torch.from_numpy(images).float()
+    return images
+
+
+# colormap
+def colormap():
+    return mpl.colors.LinearSegmentedColormap.from_list('cmap', ['#FFFFFF', '#98F5FF', '#00FF00', '#FFFF00','#FF0000', '#8B0000'], 256)
+
+
+def save_images(path, data):
+    if data.shape[2] == 1:
+        data = data.reshape([data.shape[0], data.shape[1]])
+    img = transforms.ToPILImage()(np.uint8(data))
+
+    img.save(path)
+
+
+# 图像二值化  mask是一个阈值
+def PixelIntensityDecision(latlrr_image,ir_image,vi_image):
+    mask = torch.where(latlrr_image > 30, 1, 0)
+    vi_mask = vi_image * mask
+    ir_mask = ir_image * mask
+    max_input_pixel_mask = torch.max(vi_mask, ir_mask)
+    max_input_pixel = vi_image - vi_mask + max_input_pixel_mask
+    return max_input_pixel,mask
+
+
+# GF2:r=4 eps=0.05   提取图像纹理
+def gf_loss(IR,VIS):
+    r = 4
+    eps = 0.05
+    s = 1
+    IR = IR / 255
+    VIS = VIS / 255
+    IR_smoothed = GuidedFilter(r, eps)(IR, IR)
+    VIS_smoothed = GuidedFilter(r, eps)(VIS, VIS)
+    IR_detail = IR - IR_smoothed
+    r = 4
+    eps = 0.05 * 0.005
+    s = 1
+    IR_smoothed = GuidedFilter(r, eps)(IR_detail, IR_detail)
+    VIS_detail = VIS - VIS_smoothed
+    VIS_detail = GuidedFilter(r, eps)(VIS_detail, VIS_detail)
+
+    #双注意力机制重构网络
+    fusion_out = fusion_strategy.attention_fusion_weight(IR_smoothed , VIS_detail)
+    fusion_smoothed = (IR_smoothed + VIS_smoothed) / 2
+    fusion_out = (fusion_out - torch.min(fusion_out)) / (torch.max(fusion_out) - torch.min(fusion_out)) * 255
+    fusion_smoothed = (fusion_smoothed - torch.min(fusion_smoothed)) / (torch.max(fusion_smoothed) - torch.min(fusion_smoothed)) * 255
+
+    return fusion_out,fusion_smoothed
+
+
+# GF3:r=8 eps=0.05
+def gf_out(output):
+    r = 8
+    eps =0.05
+    s = 1
+    output = output / 255
+    output_smoothed = GuidedFilter(r, eps)(output, output)
+    output_detail = output - output_smoothed
+    output_detail = (output_detail - torch.min(output_detail)) / (torch.max(output_detail) - torch.min(output_detail)) * 255
+    output_smoothed = (output_smoothed - torch.min(output_smoothed)) / (torch.max(output_smoothed) - torch.min(output_smoothed)) * 255
+    return output_detail,output_smoothed
