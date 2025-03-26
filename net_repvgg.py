@@ -9,6 +9,7 @@ from args_fusion import args
 #调用CBAM
 import CBAM
 import fusion_strategy
+import SimAM
 
 from repvgg import RepVGGBlock,repvgg_model_convert
 
@@ -56,8 +57,8 @@ class Repvgg_net(nn.Module):
         self.RepVgg_ir2 = RepVGGBlock(in_channels=nb_filter[1], out_channels=nb_filter[1], kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
 
 
-        self.cbam = CBAM.CBAMBlock(nb_filter[1]*2, reduction=4, kernel_size=kernel_size) #out 128 yuan
-
+        # self.cbam = CBAM.CBAMBlock(nb_filter[1]*2, reduction=4, kernel_size=kernel_size) #out 128 yuan
+        self.simam = SimAM.SimAM()
 
         #decode  解码两层RepVGGBlock
         self.RepVgg_decode1 = RepVGGBlock(in_channels=nb_filter[1]*2, out_channels=nb_filter[1], kernel_size=3, stride=1, padding=1, deploy=self.deploy, use_se=self.use_se)
@@ -80,8 +81,8 @@ class Repvgg_net(nn.Module):
     # 融合层策略
     def fusion(self, en1, en2):
         x = torch.cat([en1[0], en2[0]], 1)
-        x = self.cbam(x)
-
+        # x = self.cbam(x)
+        x = self.simam(x)
         return [x]
 
     def decoder(self, f_en):
@@ -95,7 +96,7 @@ if __name__ == '__main__':
 
     # 根据BTSFusion.model生成测试test1_model.model
     densefuse_model = Repvgg_net(args.input_nc, args.output_nc, deploy=False)
-    densefuse_model.load_state_dict(torch.load("./models/BTSFusion.model"))
+    # densefuse_model.load_state_dict(torch.load("./models/BTSFusion.model"))
+    densefuse_model.load_state_dict(torch.load("./models/Final_epoch_2_alpha_10000_wir_6.0_wvi_3.0.model"))
 
-
-    repvgg_model_convert(densefuse_model, save_path="./models/test/test1_model.model", do_copy=True)
+    repvgg_model_convert(densefuse_model, save_path="./models/test/test_model.model", do_copy=True)

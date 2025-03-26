@@ -118,7 +118,7 @@ def main():
 	start = time.time()
 	with torch.no_grad():
 		model = load_model(model_path, 1, 1)
-		for i in range(80,85):
+		for i in range(0,85):
 			index = i + 1
 			# infrared_path = test_path + 'IR' + str(index) + '.bmp'
 			# visible_path = test_path + 'VIS' + str(index) + '.bmp'

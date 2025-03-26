@@ -7,8 +7,8 @@
 class args():
 
 	# training args
-	epochs = 30 #"number of training epochs, default is 2"
-	batch_size = 8#8 #"batch size for training, default is 4"
+	epochs = 2 #"number of training epochs, default is 2"
+	batch_size = 4#8 #"batch size for training, default is 4"
 	dataset_ir = "D:/KAIST/lwir"
 	dataset_vi = "D:/KAIST/visible"     # 哥，好像全文并没有用到你，用的是replace()
 	HEIGHT = 256
@@ -32,8 +32,8 @@ class args():
 	lr = 1e-4 #"learning rate, default is 0.0001"
 	lr_light = 1e-4  # "learning rate, default is 0.0001"
 	log_interval = 5 #"number of images after which the training loss is logged, default is 500"
-	#resume = None#"./models/BTSFusion.model"      # 原先
-	resume = "./models/BTSFusion.model"    # 更改
+	resume = None#"./models/BTSFusion.model"      # 原先
+
 
 
 	# 你们三是什么用？
@@ -42,7 +42,8 @@ class args():
 	resume_auto_fn = None
 
 	#model_path_gray = "./models/BTSFusion.model" #densefuse_gray.model"
-	model_path_gray_test = "./models/test/test1_model.model"
+	# 通过Repvgg_net生成的model用作测试的model
+	model_path_gray_test = "./models/test/test_model.model"
 
 
 
