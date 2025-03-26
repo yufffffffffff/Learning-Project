@@ -15,9 +15,8 @@ int main(int argc, char *argv[])
     //qDebug() << QSqlDatabase::drivers();//检测数据库是否加载驱动
 
     a.setQuitOnLastWindowClosed(false);
-
-    UserLogin* userlogin = new UserLogin;
-    userlogin->show();
+	UserLogin* userlogin = new UserLogin;
+	userlogin->show();
 
     return a.exec();
 }

@@ -35,7 +35,7 @@ void TalkWindow::onSendBtnClicked(bool) {
 		return;
 	}
 
-	QString& html= ui.textEdit->document()->toHtml();//获取当前文档转换为html
+	QString html= ui.textEdit->document()->toHtml();//获取当前文档转换为html
 
 	//文本htmlt如果没有字体则添加字体 
 	if ((!html.contains(".png")&& !html.contains("</span>")) || (html.contains(".png") && html.contains("</span>"))) {//html不包含图片同时不包含文本

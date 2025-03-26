@@ -1,4 +1,5 @@
 #include "UserLogin.h"
+#include <QDebug>
 
 QString gLoginEmployeeID;//登录者QQ号(员工号)
 
@@ -38,21 +39,32 @@ void UserLogin::initControl()
 
 bool UserLogin::connectMySql()//连接数据库
 {
-	QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");//myysql数据库
-	db.setHostName("127.0.0.1");//设置主机名
-	//db.setHostName("localhost");//设置主机名
+
+
+	//打印Qt支持的数据库驱动
+	qDebug() << "数据库驱动：" << QSqlDatabase::drivers();//查看QT支持的数据库驱动
+	QStringList drivers = QSqlDatabase::drivers();
+	//利用drivers（）获取数据库驱动类型，其返回值为QstringList类型
+	foreach(QString driver, drivers)  //用foreach 进行遍历
+	{
+		qDebug() << driver;        // 输出数据库驱动类型
+	}
+
+
+	QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL", "mysql");//myysql数据库
+	db.setHostName("localhost");//设置主机名
 	db.setPort(3306);//设置端口
 	db.setUserName("root");//设置登录名
-	db.setPassword("zhou1zhou2");//设置密码
+	db.setPassword("123");//设置密码
 	db.setDatabaseName("qtqq");//设置数据库名
 
 	//QSqlError e = db.lastError();//打开数据库出现的最后一个问题
 	//QMessageBox::information(NULL, QString::fromLocal8Bit("打不开MySQL问题:"), e.databaseText()+"--"+e.driverText());
 
 	if (db.open()) {
-		//QMessageBox::information(nullptr, QString("提示"), QString("连接成功!"));
-		//QMessageBox::information(nullptr, QStringLiteral("提示"), QStringLiteral("连接成功!"));
-		//QMessageBox::information(NULL, QString::fromLocal8Bit("提示"), QString::fromLocal8Bit("连接成功!"));
+		QMessageBox::information(nullptr, QString("提示"), QString("连接成功!"));
+		QMessageBox::information(nullptr, QStringLiteral("提示"), QStringLiteral("连接成功!"));
+		QMessageBox::information(NULL, QString::fromLocal8Bit("提示"), QString::fromLocal8Bit("连接成功!"));
 		return true;//数据打开成功
 	}else{
 		return false;//数据库打开失败
@@ -110,7 +122,7 @@ void UserLogin::onLoginBtnClicked() {
 	bool isAccountLogin;
 	QString strAccount;//账号或QQ号
 	if (!veryfyAccountCode(isAccountLogin, strAccount)) {
-		QMessageBox::warning(Q_NULLPTR, QString("提示"), QString("您输入的账号或密码请重新输入!"));
+		QMessageBox::warning(Q_NULLPTR, QString("提示"), QString("您输入的账号或密码有误，请重新输入!"));
 		//ui.editUserAccount->setText("");
 		//ui.editPassword->setText("");
 		return;

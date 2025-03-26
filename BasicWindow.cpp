@@ -41,10 +41,16 @@ void BasicWindow::loadStyleSheet(const QString& sheetName)
 		{background-color:rgb(%1,%2,%3);\
 			border-top-left-radius:4px;}\
 			QWidget[buttomskin=true]\
-		{border-top:1px solid rgb(%1,%2,%3,100);\
-			background-color:rgb(%1,%2,%3,50);\
-			border-button-left-radius:4px;\
-			border-botton-right-radius:4px;}").arg(r).arg(g).arg(b);
+		{border - top:1px solid rgb(% 1, % 2, % 3, 100); \
+			background - color:rgb(% 1, % 2, % 3, 50); \
+			border - button - left - radius:4px; \
+			border - botton - right - radius:4px; }").arg(r).arg(g).arg(b);
+
+
+		//{border - top:1px solid rgb(% 1, % 2, % 3, 100); \
+		//	background - color:rgb(% 1, % 2, % 3, 50); \
+		//	border - button - left - radius:4px; \
+		//	border - botton - right - radius:4px; }").arg(r).arg(g).arg(b);
 
 		/*
 		qsstyleSheet += QString("QWidget[titleskin=true]\ //界面QWidget部件的动态属性[动态属性名]
