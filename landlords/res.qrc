@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>conf/playList.json</file>
         <file>images/1fen-1.png</file>
         <file>images/1fen-2.png</file>
         <file>images/1fen-3.png</file>
@@ -91,7 +92,6 @@
         <file>images/start-1.png</file>
         <file>images/start-2.png</file>
         <file>images/start-3.png</file>
-        <file>conf/playList.json</file>
         <file>music/Man_1.mp3</file>
         <file>music/Man_2.mp3</file>
         <file>music/Man_3.mp3</file>
